@@ -1,12 +1,13 @@
-.PHONY: help install data dev clean
+.PHONY: help install data dev serve clean
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  install  - Install npm dependencies"
-	@echo "  data     - Download conversations.jsonl from HuggingFace"
-	@echo "  dev      - Install dependencies and start dev server"
-	@echo "  clean    - Clean downloaded data and node_modules"
+	@echo "  install   - Install npm dependencies"
+	@echo "  data      - Download conversations.jsonl from HuggingFace"
+	@echo "  dev       - Install dependencies and start dev server (data optional)"
+	@echo "  serve - Start development server on port 5000"
+	@echo "  clean     - Clean downloaded data and node_modules"
 
 # Install npm dependencies
 install:
@@ -28,8 +29,26 @@ data:
 	@echo "Downloaded conversations.jsonl to static/data/conversations.jsonl"
 
 # Full development setup
-dev: install data
+dev: install
+	@if [ -f "static/data/conversations.jsonl" ]; then \
+		echo "Data file already exists, skipping download"; \
+	else \
+		echo "No data file found. You can:"; \
+		echo "1. Set HF_TOKEN and run 'make data' to download"; \
+		echo "2. Or continue without data (some features may not work)"; \
+		echo ""; \
+		if [ -n "$(HF_TOKEN)" ]; then \
+			echo "HF_TOKEN found, downloading data..."; \
+			$(MAKE) data; \
+		else \
+			echo "Continuing without data..."; \
+		fi; \
+	fi
 	npm run dev
+
+# Start development server on port 5000
+serve:
+	npm run dev -- --port 5000
 
 # Clean everything
 clean:
