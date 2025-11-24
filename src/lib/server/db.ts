@@ -331,6 +331,7 @@ export async function searchConversations(
 					model_a_name: conv.model_a_name,
 					model_b_name: conv.model_b_name,
 					short_summary: conv.short_summary || '',
+					opening_msg: conv.opening_msg || '',
 					keywords: conv.keywords || [],
 					categories: conv.categories || [],
 					languages: conv.languages || [],

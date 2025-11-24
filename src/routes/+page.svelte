@@ -96,6 +96,11 @@
 			error = '';
 			totalPages = 1;
 			total = 0;
+			// Force URL update to clear search params
+			const url = new URL(window.location.pathname, window.location.origin);
+			if (window.location.search !== '') {
+				window.history.replaceState(null, '', url.toString());
+			}
 		}
 	}
 
@@ -131,7 +136,7 @@
 		}
 
 		if (window.location.search !== url.search) {
-			window.history.pushState(null, '', url.toString());
+			window.history.replaceState(null, '', url.toString());
 		}
 	});
 </script>

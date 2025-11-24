@@ -6,7 +6,6 @@
 	let conversation = $state<Conversation | null>(null);
 	let loading = $state(true);
 	let error = $state('');
-	let activeTab = $state<'a' | 'b'>('a');
 
 	onMount(async () => {
 		await loadConversation(params.id);
@@ -147,70 +146,82 @@
 			</section>
 		{/if}
 
-		<div class="tabs">
-			<button
-				class="tab-button"
-				class:active={activeTab === 'a'}
-				on:click={() => (activeTab = 'a')}
-			>
-				Conversation A
-			</button>
-			<button
-				class="tab-button"
-				class:active={activeTab === 'b'}
-				on:click={() => (activeTab = 'b')}
-			>
-				Conversation B
-			</button>
-		</div>
-
 		<section class="conversation-section">
-			<div class="conversation-content">
-				{#if activeTab === 'a'}
-					<h3>Conversation avec {conversation.model_a_name}</h3>
-					{#each conversation.conversation_a as message (message.content)}
-						<div class="message message-{message.role.toLowerCase()}">
-							<div class="message-header">
-								<span class="role-icon">
-									{getRoleIcon(message.role)}
-								</span>
-								<span class="role-label">
-									{getRoleLabel(message.role)}
-								</span>
-								{#if message.metadata?.output_tokens}
-									<span class="token-count">
-										{message.metadata.output_tokens} tokens
-									</span>
-								{/if}
-							</div>
-							<div class="message-content">
-								{@html message.content.replace(/\n/g, '<br>')}
-							</div>
+			<h3>Conversation Comparée</h3>
+			<div class="comparison-table">
+				<div class="table-header">
+					<div class="header-cell model-a-header">
+						<span class="model-name">{conversation.model_a_name}</span>
+						<span class="model-label">Modèle A</span>
+					</div>
+					<div class="header-cell turn-header">Tour</div>
+					<div class="header-cell model-b-header">
+						<span class="model-name">{conversation.model_b_name}</span>
+						<span class="model-label">Modèle B</span>
+					</div>
+				</div>
+
+				{#each Array(Math.max(conversation.conversation_a.length, conversation.conversation_b.length)).fill(0) as _, index}
+					<div class="table-row">
+						<div class="cell cell-a">
+							{#if conversation.conversation_a[index]}
+								<div
+									class="message message-{conversation.conversation_a[index].role.toLowerCase()}"
+								>
+									<div class="message-header">
+										<span class="role-icon"
+											>{getRoleIcon(conversation.conversation_a[index].role)}</span
+										>
+										<span class="role-label"
+											>{getRoleLabel(conversation.conversation_a[index].role)}</span
+										>
+										{#if conversation.conversation_a[index].metadata?.output_tokens}
+											<span class="token-count"
+												>{conversation.conversation_a[index].metadata.output_tokens} tokens</span
+											>
+										{/if}
+									</div>
+									<div class="message-content">
+										{@html conversation.conversation_a[index].content.replace(/\n/g, '<br>')}
+									</div>
+								</div>
+							{:else}
+								<div class="empty-cell">-</div>
+							{/if}
 						</div>
-					{/each}
-				{:else}
-					<h3>Conversation avec {conversation.model_b_name}</h3>
-					{#each conversation.conversation_b as message (message.content)}
-						<div class="message message-{message.role.toLowerCase()}">
-							<div class="message-header">
-								<span class="role-icon">
-									{getRoleIcon(message.role)}
-								</span>
-								<span class="role-label">
-									{getRoleLabel(message.role)}
-								</span>
-								{#if message.metadata?.output_tokens}
-									<span class="token-count">
-										{message.metadata.output_tokens} tokens
-									</span>
-								{/if}
-							</div>
-							<div class="message-content">
-								{@html message.content.replace(/\n/g, '<br>')}
-							</div>
+
+						<div class="cell cell-turn">
+							<div class="turn-indicator">{index + 1}</div>
 						</div>
-					{/each}
-				{/if}
+
+						<div class="cell cell-b">
+							{#if conversation.conversation_b[index]}
+								<div
+									class="message message-{conversation.conversation_b[index].role.toLowerCase()}"
+								>
+									<div class="message-header">
+										<span class="role-icon"
+											>{getRoleIcon(conversation.conversation_b[index].role)}</span
+										>
+										<span class="role-label"
+											>{getRoleLabel(conversation.conversation_b[index].role)}</span
+										>
+										{#if conversation.conversation_b[index].metadata?.output_tokens}
+											<span class="token-count"
+												>{conversation.conversation_b[index].metadata.output_tokens} tokens</span
+											>
+										{/if}
+									</div>
+									<div class="message-content">
+										{@html conversation.conversation_b[index].content.replace(/\n/g, '<br>')}
+									</div>
+								</div>
+							{:else}
+								<div class="empty-cell">-</div>
+							{/if}
+						</div>
+					</div>
+				{/each}
 			</div>
 		</section>
 
@@ -402,33 +413,6 @@
 		color: #374151;
 	}
 
-	.tabs {
-		display: flex;
-		margin: 20px 0;
-		border-bottom: 1px solid #e2e8f0;
-	}
-
-	.tab-button {
-		padding: 12px 24px;
-		border: none;
-		background: none;
-		font-size: 16px;
-		font-weight: 500;
-		color: #64748b;
-		cursor: pointer;
-		border-bottom: 2px solid transparent;
-		transition: all 0.2s ease;
-	}
-
-	.tab-button:hover {
-		color: #1e293b;
-	}
-
-	.tab-button.active {
-		color: #3b82f6;
-		border-bottom-color: #3b82f6;
-	}
-
 	.conversation-section {
 		background: white;
 		border-radius: 12px;
@@ -437,11 +421,152 @@
 		border: 1px solid #e2e8f0;
 	}
 
-	.conversation-content h3 {
-		font-size: 1.1rem;
+	.conversation-section h3 {
+		font-size: 1.3rem;
 		font-weight: 600;
 		color: #1e293b;
 		margin: 0 0 20px 0;
+	}
+
+	.comparison-table {
+		border: 1px solid #e2e8f0;
+		border-radius: 8px;
+		overflow: hidden;
+	}
+
+	.table-header {
+		display: grid;
+		grid-template-columns: 1fr 80px 1fr;
+		background: #f8fafc;
+		border-bottom: 2px solid #e2e8f0;
+	}
+
+	.header-cell {
+		padding: 16px;
+		text-align: center;
+		font-weight: 600;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.model-a-header {
+		background: #eff6ff;
+		border-right: 1px solid #e2e8f0;
+	}
+
+	.model-b-header {
+		background: #f0fdf4;
+		border-left: 1px solid #e2e8f0;
+	}
+
+	.turn-header {
+		background: #f8fafc;
+		border-left: 1px solid #e2e8f0;
+		border-right: 1px solid #e2e8f0;
+		font-size: 14px;
+		color: #64748b;
+	}
+
+	.model-name {
+		font-size: 16px;
+		font-weight: 700;
+	}
+
+	.model-a-header .model-name {
+		color: #3b82f6;
+	}
+
+	.model-b-header .model-name {
+		color: #10b981;
+	}
+
+	.model-label {
+		font-size: 12px;
+		color: #64748b;
+		font-weight: 500;
+	}
+
+	.table-row {
+		display: grid;
+		grid-template-columns: 1fr 80px 1fr;
+		border-bottom: 1px solid #f1f5f9;
+	}
+
+	.table-row:last-child {
+		border-bottom: none;
+	}
+
+	.cell {
+		padding: 0;
+		display: flex;
+		align-items: stretch;
+	}
+
+	.cell-a {
+		border-right: 1px solid #e2e8f0;
+	}
+
+	.cell-b {
+		border-left: 1px solid #e2e8f0;
+	}
+
+	.cell-turn {
+		border-left: 1px solid #e2e8f0;
+		border-right: 1px solid #e2e8f0;
+		background: #fafbfc;
+	}
+
+	.turn-indicator {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 12px;
+		font-weight: 600;
+		color: #64748b;
+		background: #f8fafc;
+		height: 100%;
+	}
+
+	.message {
+		flex: 1;
+		margin: 0;
+		border-radius: 0;
+		border: none;
+	}
+
+	.message-user {
+		background: #f8fafc;
+	}
+
+	.message-assistant {
+		background: #eff6ff;
+	}
+
+	.message-system {
+		background: #fef3c7;
+	}
+
+	.cell-a .message-assistant {
+		background: #eff6ff;
+		border-right: 1px solid #dbeafe;
+	}
+
+	.cell-b .message-assistant {
+		background: #f0fdf4;
+		border-left: 1px solid #d1fae5;
+	}
+
+	.empty-cell {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: #cbd5e1;
+		font-style: italic;
+		background: #f8fafc;
+		min-height: 60px;
 	}
 
 	.message {
@@ -603,6 +728,69 @@
 
 		.metadata-grid {
 			grid-template-columns: 1fr;
+		}
+
+		.table-header,
+		.table-row {
+			grid-template-columns: 1fr;
+		}
+
+		.header-cell,
+		.cell {
+			border: none !important;
+			border-bottom: 1px solid #e2e8f0 !important;
+		}
+
+		.model-a-header,
+		.model-b-header {
+			background: #f8fafc;
+			border-bottom: 2px solid #e2e8f0;
+		}
+
+		.model-a-header .model-name,
+		.model-b-header .model-name {
+			color: #1e293b;
+		}
+
+		.cell-turn {
+			display: none;
+		}
+
+		.turn-indicator {
+			display: none;
+		}
+
+		.cell-a,
+		.cell-b {
+			border-bottom: 1px solid #e2e8f0;
+		}
+
+		.cell-a .message-assistant,
+		.cell-b .message-assistant {
+			border: none;
+			background: #eff6ff;
+		}
+
+		.cell-b .message-assistant {
+			background: #f0fdf4;
+		}
+	}
+
+	@media (max-width: 1024px) {
+		.header-cell {
+			padding: 12px 8px;
+		}
+
+		.model-name {
+			font-size: 14px;
+		}
+
+		.message-header {
+			padding: 8px 12px;
+		}
+
+		.message-content {
+			padding: 12px;
 		}
 	}
 </style>
