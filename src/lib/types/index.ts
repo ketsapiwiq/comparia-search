@@ -64,3 +64,34 @@ export interface SearchOptions {
 	limit?: number;
 	offset?: number;
 }
+
+export interface VectorSearchResult {
+	id: string;
+	title: string;
+	url: string;
+	content: string;
+	similarity: number;
+}
+
+export interface UnifiedSearchResult {
+	flexsearch: SearchResult[];
+	vector: VectorSearchResult[];
+	hybrid: VectorSearchResult[];
+}
+
+export interface UnifiedSearchResponse {
+	flexsearch?: SearchResult[];
+	vector?: VectorSearchResult[];
+	hybrid?: VectorSearchResult[];
+	results?: SearchResult[] | VectorSearchResult[] | Array<SearchResult | VectorSearchResult>;
+	total: number;
+	page: number;
+	totalPages: number;
+	type?: 'flexsearch' | 'vector' | 'hybrid' | 'unified' | 'best' | 'compare';
+	stats?: {
+		flexsearchCount: number;
+		vectorCount: number;
+		hybridCount: number;
+		overlap: number;
+	};
+}

@@ -1,10 +1,18 @@
 <script lang="ts">
 	import SearchBar from '$lib/components/SearchBar.svelte';
-	import ResultsList from '$lib/components/ResultsList.svelte';
-	import type { SearchResult } from '$lib/types/index.js';
+	import UnifiedResultsList from '$lib/components/UnifiedResultsList.svelte';
+	import type {
+		SearchResult,
+		UnifiedSearchResult,
+		UnifiedSearchResponse
+	} from '$lib/types/index.js';
 
 	let searchQuery = $state('');
-	let results = $state<SearchResult[]>([]);
+	let searchType = $state<'flexsearch' | 'vector' | 'hybrid' | 'unified' | 'best' | 'compare'>(
+		'unified'
+	);
+	let unifiedResults = $state<UnifiedSearchResult | undefined>();
+	let results = $state<SearchResult[] | []>([]);
 	let loading = $state(false);
 	let error = $state('');
 	let currentPage = $state(1);
@@ -23,11 +31,12 @@
 	});
 
 	async function performSearch(query: string, page = 1) {
-		console.log('🚀 performSearch called:', { query, page });
+		console.log('🚀 performSearch called:', { query, page, searchType });
 
 		if (!query || query.trim().length < 2) {
 			console.log('❌ Query too short, clearing results');
 			results = [];
+			unifiedResults = undefined;
 			error = '';
 			currentPage = 1;
 			totalPages = 1;
@@ -42,7 +51,8 @@
 			const params = new URLSearchParams({
 				q: query.trim(),
 				page: page.toString(),
-				limit: '20'
+				limit: '20',
+				type: searchType
 			});
 
 			console.log('📡 Fetching search results...', params.toString());
@@ -53,15 +63,36 @@
 				throw new Error(errorData.error || 'Recherche failed');
 			}
 
-			const data = await response.json();
+			const data: UnifiedSearchResponse = await response.json();
 			console.log('📊 Search response received:', data);
-			results = data.results || [];
+
+			// Handle different response types
+			if (searchType === 'unified') {
+				unifiedResults = {
+					flexsearch: data.flexsearch || [],
+					vector: data.vector || [],
+					hybrid: data.hybrid || []
+				};
+				results = [];
+			} else {
+				results = data.results || [];
+				unifiedResults = undefined;
+			}
+
 			currentPage = data.page;
 			totalPages = data.totalPages;
 			total = data.total;
 
 			console.log('✅ Results updated:', {
+				searchType,
 				resultsCount: results.length,
+				unifiedResults: unifiedResults
+					? {
+							flexsearch: unifiedResults.flexsearch.length,
+							vector: unifiedResults.vector.length,
+							hybrid: unifiedResults.hybrid.length
+						}
+					: undefined,
 				total,
 				currentPage,
 				totalPages
@@ -70,6 +101,7 @@
 			console.error('❌ Error during search:', err);
 			error = err instanceof Error ? err.message : 'Une erreur est survenue lors de la recherche';
 			results = [];
+			unifiedResults = undefined;
 			currentPage = 1;
 			totalPages = 1;
 			total = 0;
@@ -86,6 +118,14 @@
 		}
 	}
 
+	function handleSearchTypeChange(type: typeof searchType) {
+		searchType = type;
+		currentPage = 1;
+		if (searchQuery.trim().length >= 2) {
+			performSearch(searchQuery, 1);
+		}
+	}
+
 	function handleSearch(query: string) {
 		searchQuery = query;
 		currentPage = 1;
@@ -93,6 +133,7 @@
 			performSearch(query, 1);
 		} else {
 			results = [];
+			unifiedResults = undefined;
 			error = '';
 			totalPages = 1;
 			total = 0;
@@ -109,11 +150,13 @@
 		const urlParams = new URLSearchParams(window.location.search);
 		const urlQuery = urlParams.get('q') || '';
 		const urlPage = parseInt(urlParams.get('page') || '1');
+		const urlType = (urlParams.get('type') as typeof searchType) || 'unified';
 
 		// Only initialize on first load, not on every change
 		if (searchQuery === '' && currentPage === 1) {
 			searchQuery = urlQuery;
 			currentPage = urlPage;
+			searchType = urlType;
 
 			if (urlQuery.length >= 2) {
 				performSearch(urlQuery, urlPage);
@@ -130,9 +173,11 @@
 		if (searchQuery.trim().length >= 2) {
 			url.searchParams.set('q', searchQuery.trim());
 			url.searchParams.set('page', currentPage.toString());
+			url.searchParams.set('type', searchType);
 		} else {
 			url.searchParams.delete('q');
 			url.searchParams.delete('page');
+			url.searchParams.delete('type');
 		}
 
 		if (window.location.search !== url.search) {
@@ -157,9 +202,27 @@
 	<header class="header">
 		<h1 class="title">🔍 Recherche de Conversations</h1>
 		<p class="subtitle">
-			Explorez des milliers de conversations entre modèles de langage avec une recherche full-text
-			instantanée
+			Explorez des milliers de conversations entre modèles de langage avec recherche full-text,
+			sémantique et hybride
 		</p>
+
+		<!-- Search Type Selector -->
+		<div class="search-type-selector">
+			<label for="search-type" class="selector-label">Type de recherche:</label>
+			<select
+				id="search-type"
+				bind:value={searchType}
+				onchange={() => handleSearchTypeChange(searchType)}
+				class="search-type-select"
+			>
+				<option value="unified">🎯 Unifiée (toutes)</option>
+				<option value="flexsearch">🔍 Full-Text</option>
+				<option value="vector">🧠 Sémantique</option>
+				<option value="hybrid">⚡ Hybride</option>
+				<option value="best">🏆 Meilleurs résultats</option>
+				<option value="compare">📊 Comparer</option>
+			</select>
+		</div>
 	</header>
 
 	<div class="search-section">
@@ -167,7 +230,8 @@
 	</div>
 
 	<div class="results-section">
-		<ResultsList
+		<UnifiedResultsList
+			{unifiedResults}
 			{results}
 			{loading}
 			{error}
@@ -176,6 +240,7 @@
 			query={searchQuery.trim()}
 			onPageChange={handlePageChange}
 			{total}
+			{searchType}
 		/>
 	</div>
 
@@ -222,6 +287,41 @@
 		max-width: 600px;
 		margin-left: auto;
 		margin-right: auto;
+		margin-bottom: 24px;
+	}
+
+	.search-type-selector {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		margin-top: 20px;
+	}
+
+	.selector-label {
+		font-size: 14px;
+		font-weight: 600;
+		color: #374151;
+	}
+
+	.search-type-select {
+		padding: 8px 12px;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		background: white;
+		font-size: 14px;
+		color: #374151;
+		cursor: pointer;
+		transition: border-color 0.2s ease;
+	}
+
+	.search-type-select:hover {
+		border-color: #3b82f6;
+	}
+
+	.search-type-select:focus {
+		outline: 2px solid #3b82f6;
+		outline-offset: 2px;
 	}
 
 	.search-section {

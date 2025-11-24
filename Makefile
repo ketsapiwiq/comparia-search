@@ -5,7 +5,7 @@ help:
 	@echo "Available targets:"
 	@echo "  install  - Install npm dependencies"
 	@echo "  data     - Download conversations.jsonl from HuggingFace"
-	@echo "  dev      - Install dependencies and start dev server"
+	@echo "  dev      - Install dependencies and start dev server (uses existing data)"
 	@echo "  clean    - Clean downloaded data and node_modules"
 
 # Install npm dependencies
@@ -27,8 +27,8 @@ data:
 		-o static/data/conversations.jsonl
 	@echo "Downloaded conversations.jsonl to static/data/conversations.jsonl"
 
-# Full development setup
-dev: install data
+# Full development setup (uses existing data, no HF token required)
+dev: install
 	npm run dev
 
 # Clean everything
