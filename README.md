@@ -6,13 +6,21 @@ Application de recherche de conversations IA avec SvelteKit et FlexSearch.
 
 ```bash
 cd comparia-search
-yarn install
+npm install
 ```
+
+Pour télécharger les données de conversations :
+
+```bash
+make data
+```
+
+*Note : La commande `make data` nécessite la variable d'environnement `HF_TOKEN` avec votre token HuggingFace.*
 
 ## Démarrage
 
 ```bash
-yarn dev
+npm run dev
 ```
 
 L'application sera disponible sur http://localhost:5173
